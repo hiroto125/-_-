@@ -172,15 +172,65 @@ h1{font-size:28px;margin:5px 0 14px}
 
   document.getElementById("noBtn").addEventListener("click",hideConfirm);
 
-  document.getElementById("yesBtn").addEventListener("click",function(){
-    if(!selectedAction) return;
-    var now=new Date(); // 「はい」を押した瞬間
-    var action=selectedAction;
-    logs.push({action:action,time:timeString(now),date:dateString(now)});
-    hideConfirm();
-    render();
-    toast(action+" "+timeString(now)+" で打刻しました");
-  });
+document.getElementById("yesBtn").addEventListener("click",function(){
+
+  var action=selectedAction;
+
+  if(!navigator.geolocation){
+    toast("この端末ではGPSを利用できません");
+    return;
+  }
+
+  toast("現在地を取得しています…");
+
+  navigator.geolocation.getCurrentPosition(
+    function(position){
+      var now=new Date();
+      var latitude=position.coords.latitude;
+      var longitude=position.coords.longitude;
+      var accuracy=position.coords.accuracy;
+
+      logs.push({
+        action:action,
+        time:timeString(now),
+        date:dateString(now),
+        latitude:latitude,
+        longitude:longitude,
+        accuracy:accuracy
+      });
+
+      hideConfirm();
+      render();
+
+      toast(
+        action+" "+timeString(now)+
+        " GPS取得成功（精度 約"+Math.round(accuracy)+"m）"
+      );
+
+      console.log("緯度:",latitude);
+      console.log("経度:",longitude);
+      console.log("精度:",accuracy);
+    },
+    function(error){
+      var message="位置情報を取得できませんでした";
+
+      if(error.code===1){
+        message="位置情報の使用が許可されていません";
+      }else if(error.code===2){
+        message="現在地を取得できませんでした";
+      }else if(error.code===3){
+        message="位置情報の取得がタイムアウトしました";
+      }
+
+      toast(message);
+    },
+    {
+      enableHighAccuracy:true,
+      timeout:15000,
+      maximumAge:0
+    }
+  );
+});
 
   overlay.addEventListener("click",function(e){
     if(e.target===overlay) hideConfirm();
